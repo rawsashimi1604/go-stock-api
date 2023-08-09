@@ -16,3 +16,8 @@ su postgres
 psql
 CREATE DATABASE stocksdb;
 ```
+
+## Running with hot reload using Air
+1. Install air `https://github.com/cosmtrek/air`
+2. Run using cmd `air`
+3. Make sure `air` is in `PATH`
