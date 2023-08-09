@@ -52,6 +52,11 @@ func HandleIndex(writer http.ResponseWriter, request *http.Request) {
 	json.NewEncoder(writer).Encode(response)
 }
 
+// func HandleGetAllStocks(writer http.ResponseWriter, request http.Request) {
+// 	stocks := make([]models.Stock, 0)
+
+// }
+
 func HandleCreateStock(writer http.ResponseWriter, request *http.Request) {
 	var stock models.Stock
 
@@ -60,7 +65,10 @@ func HandleCreateStock(writer http.ResponseWriter, request *http.Request) {
 		log.Fatalf("Unable to decode the request body. %v", err)
 	}
 
-	stock.Id = insertStock(stock)
+	stock.Id, err = insertStock(stock)
+	if err != nil {
+		log.Print("Something went wrong.")
+	}
 
 	response := response{
 		Message: fmt.Sprintf("Created stock with the ID: %v", stock.Id),
@@ -73,8 +81,7 @@ func HandleCreateStock(writer http.ResponseWriter, request *http.Request) {
 }
 
 // ------------------------- handler functions ----------------
-// insert one stock in the DB
-func insertStock(stock models.Stock) int64 {
+func insertStock(stock models.Stock) (int64, error) {
 	db := createConnection()
 	defer db.Close()
 	sqlStatement := `INSERT INTO stock (name, price, company) VALUES ($1, $2, $3) RETURNING id`
@@ -84,9 +91,10 @@ func insertStock(stock models.Stock) int64 {
 	err := db.QueryRow(sqlStatement, stock.Name, stock.Price, stock.Company).Scan(&id)
 
 	if err != nil {
-		log.Fatalf("Unable to execute the query. %v", err)
+		log.Print("Unable to execute the query. %v", err)
+		return 0, err
 	}
 
 	fmt.Printf("Inserted a single record with id: %v", id)
-	return id
+	return id, nil
 }
