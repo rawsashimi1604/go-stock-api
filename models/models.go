@@ -1,7 +1,7 @@
 package models
 
 type Stock struct {
-	StockId int64   `json:"stockId"`
+	Id      int64   `json:"id"`
 	Name    string  `json:"name"`
 	Price   float64 `json:"price"`
 	Company string  `json:"company"`

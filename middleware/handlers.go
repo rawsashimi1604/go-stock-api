@@ -10,11 +10,13 @@ import (
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"github.com/rawsashimi1604/go-stock-api/models"
 )
 
 type response struct {
-	Message string `json:"message,omitempty"`
-	Code    int    `json:"code,omitempty"`
+	Message string      `json:"message,omitempty"`
+	Code    int         `json:"code,omitempty"`
+	Data    interface{} `json:"data,omitempty"`
 }
 
 func CreateConnection() *sql.DB {
@@ -43,6 +45,25 @@ func HandleIndex(writer http.ResponseWriter, request *http.Request) {
 
 	response := response{
 		Message: msg,
+		Code:    http.StatusOK,
+	}
+
+	writer.Header().Set("Content-Type", "application.json")
+	json.NewEncoder(writer).Encode(response)
+}
+
+func HandleCreateStock(writer http.ResponseWriter, request *http.Request) {
+	var stock models.Stock
+
+	err := json.NewDecoder(request.Body).Decode(&stock)
+	if err != nil {
+		log.Fatalf("Unable to decode the request body. %v", err)
+	}
+
+	response := response{
+		Message: fmt.Sprintf("Created stock with the ID: %v", stock.Id),
+		Code:    http.StatusCreated,
+		Data:    stock,
 	}
 
 	writer.Header().Set("Content-Type", "application.json")
