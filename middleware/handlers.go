@@ -19,7 +19,7 @@ type response struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
-func CreateConnection() *sql.DB {
+func createConnection() *sql.DB {
 	if err := godotenv.Load(".env"); err != nil {
 		log.Fatal("Something went wrong when loading the .env file.")
 	}
@@ -60,6 +60,8 @@ func HandleCreateStock(writer http.ResponseWriter, request *http.Request) {
 		log.Fatalf("Unable to decode the request body. %v", err)
 	}
 
+	stock.Id = insertStock(stock)
+
 	response := response{
 		Message: fmt.Sprintf("Created stock with the ID: %v", stock.Id),
 		Code:    http.StatusCreated,
@@ -68,4 +70,23 @@ func HandleCreateStock(writer http.ResponseWriter, request *http.Request) {
 
 	writer.Header().Set("Content-Type", "application.json")
 	json.NewEncoder(writer).Encode(response)
+}
+
+// ------------------------- handler functions ----------------
+// insert one stock in the DB
+func insertStock(stock models.Stock) int64 {
+	db := createConnection()
+	defer db.Close()
+	sqlStatement := `INSERT INTO stock (name, price, company) VALUES ($1, $2, $3) RETURNING id`
+
+	var id int64
+
+	err := db.QueryRow(sqlStatement, stock.Name, stock.Price, stock.Company).Scan(&id)
+
+	if err != nil {
+		log.Fatalf("Unable to execute the query. %v", err)
+	}
+
+	fmt.Printf("Inserted a single record with id: %v", id)
+	return id
 }
