@@ -17,6 +17,16 @@ psql
 CREATE DATABASE stocksdb;
 ```
 
+Create Stock table.
+```
+CREATE TABLE stock (
+    id SERIAL PRIMARY KEY,
+    name TEXT,
+    price NUMERIC,
+    company TEXT
+);
+```
+
 ## Running with hot reload using Air
 1. Install air `https://github.com/cosmtrek/air`
 2. Run using cmd `air`
