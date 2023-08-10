@@ -167,7 +167,7 @@ func HandleCreateStock(writer http.ResponseWriter, request *http.Request) {
 
 	err := json.NewDecoder(request.Body).Decode(&stock)
 	if err != nil {
-		log.Fatalf("Unable to decode the request body. %v", err)
+		log.Printf("Unable to decode the request body. %v", err)
 	}
 
 	stock.Id, err = insertStock(stock)
@@ -183,6 +183,49 @@ func HandleCreateStock(writer http.ResponseWriter, request *http.Request) {
 
 	writer.Header().Set("Content-Type", "application.json")
 	json.NewEncoder(writer).Encode(response)
+}
+
+func HandleUpdateStock(writer http.ResponseWriter, request *http.Request) {
+
+	writer.Header().Set("Content-Type", "application.json")
+	stock := models.Stock{}
+
+	err := json.NewDecoder(request.Body).Decode(&stock)
+	if err != nil {
+		log.Printf("Unable to decode the request body. %v", err)
+	}
+
+	// Get the id as query param from http request.
+	id := mux.Vars(request)["id"]
+	fmt.Println("Id: ", id)
+
+	// Id converted to int64
+	convertedId, _ := strconv.ParseInt(id, 10, 64)
+	fmt.Println("ConvertedId: ", convertedId)
+	stock.Id = convertedId
+
+	updatedStock, err := updateStock(stock)
+	if err != nil {
+		log.Print("Something went wrong.")
+	}
+
+	if updatedStock == (models.Stock{}) {
+		response := response{
+			Message: fmt.Sprintf("Stock with id: %v does not exist", id),
+			Code:    http.StatusNotFound,
+		}
+		json.NewEncoder(writer).Encode(response)
+		return
+	}
+
+	response := response{
+		Message: fmt.Sprintf("Updated stock with the ID: %v", stock.Id),
+		Code:    http.StatusOK,
+		Data:    updatedStock,
+	}
+
+	json.NewEncoder(writer).Encode(response)
+
 }
 
 // ------------------------- handler functions ----------------
@@ -202,6 +245,33 @@ func insertStock(stock models.Stock) (int64, error) {
 
 	fmt.Printf("Inserted a single record with id: %v", id)
 	return id, nil
+}
+
+func updateStock(stock models.Stock) (models.Stock, error) {
+	db := createConnection()
+	defer db.Close()
+
+	sqlStatement := `UPDATE stock SET name=$2, price=$3, company=$4 WHERE id=$1 RETURNING *`
+
+	updatedStock := models.Stock{}
+
+	err := db.QueryRow(sqlStatement, stock.Id, stock.Name, stock.Price, stock.Company).Scan(
+		&updatedStock.Id,
+		&updatedStock.Name,
+		&updatedStock.Price,
+		&updatedStock.Company,
+	)
+
+	log.Print(updatedStock)
+
+	if err != nil {
+		log.Printf("Unable to execute the query. %v", err)
+		return models.Stock{}, err
+	}
+
+	fmt.Printf("Successfully updated the stock with id: %v", updatedStock.Id)
+	return updatedStock, nil
+
 }
 
 func getStock(id int64) (models.Stock, error) {
