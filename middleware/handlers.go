@@ -7,7 +7,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
+	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/rawsashimi1604/go-stock-api/models"
@@ -56,6 +58,42 @@ func HandleGetStock(writer http.ResponseWriter, request *http.Request) {
 
 	writer.Header().Set("Content-Type", "application.json")
 
+	// Get the id as query param from http request.
+	id := mux.Vars(request)["id"]
+	fmt.Println("Id: ", id)
+
+	// Id converted to int64
+	convertedId, _ := strconv.ParseInt(id, 10, 64)
+	fmt.Println("ConvertedId: ", convertedId)
+
+	stock, err := getStock(convertedId)
+
+	if err != nil {
+		response := response{
+			Message: "Something went wrong on the server.",
+			Code:    http.StatusBadGateway,
+		}
+		json.NewEncoder(writer).Encode(response)
+		return
+	}
+
+	// If no stock was found
+	if stock == (models.Stock{}) {
+		response := response{
+			Message: "Unable to find stock with the id " + id,
+			Code:    http.StatusNotFound,
+		}
+		json.NewEncoder(writer).Encode(response)
+		return
+	}
+
+	// Success flow
+	response := response{
+		Message: fmt.Sprintf("Successfully got stock of id: %v", stock.Id),
+		Code:    http.StatusOK,
+		Data:    stock,
+	}
+	json.NewEncoder(writer).Encode(response)
 }
 
 func HandleGetAllStocks(writer http.ResponseWriter, request *http.Request) {
@@ -69,6 +107,7 @@ func HandleGetAllStocks(writer http.ResponseWriter, request *http.Request) {
 			Code:    http.StatusBadGateway,
 		}
 		json.NewEncoder(writer).Encode(response)
+		return
 	}
 
 	// Success flow.
@@ -130,13 +169,19 @@ func getStock(id int64) (models.Stock, error) {
 
 	stock := models.Stock{}
 
-	err := db.QueryRow(sqlStatement, id).Scan(&stock)
+	err := db.QueryRow(sqlStatement, id).Scan(
+		&stock.Id,
+		&stock.Name,
+		&stock.Price,
+		&stock.Company,
+	)
+
 	if err != nil {
 		log.Printf("Unable to execute the query. %v", err)
 		return models.Stock{}, nil
 	}
 
-	fmt.Printf("Successfully got the stockw ith id: %v", id)
+	fmt.Printf("Successfully got the stock with id: %v", id)
 	return stock, nil
 }
 
