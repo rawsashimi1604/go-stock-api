@@ -54,6 +54,49 @@ func HandleIndex(writer http.ResponseWriter, request *http.Request) {
 	json.NewEncoder(writer).Encode(response)
 }
 
+func HandleDeleteStock(writer http.ResponseWriter, request *http.Request) {
+
+	writer.Header().Set("Content-Type", "application.json")
+
+	// Get the id as query param from http request.
+	id := mux.Vars(request)["id"]
+	fmt.Println("Id: ", id)
+
+	// Id converted to int64
+	convertedId, _ := strconv.ParseInt(id, 10, 64)
+	fmt.Println("ConvertedId: ", convertedId)
+
+	stock, err := deleteStock(convertedId)
+
+	if err != nil {
+		response := response{
+			Message: "Something went wrong on the server.",
+			Code:    http.StatusBadGateway,
+		}
+		json.NewEncoder(writer).Encode(response)
+		return
+	}
+
+	// If no stock was found
+	if stock == (models.Stock{}) {
+		response := response{
+			Message: "Unable to find stock with the id " + id,
+			Code:    http.StatusNotFound,
+		}
+		json.NewEncoder(writer).Encode(response)
+		return
+	}
+
+	// Success flow
+	response := response{
+		Message: fmt.Sprintf("Successfully deleted stock of id: %v", stock.Id),
+		Code:    http.StatusOK,
+		Data:    stock,
+	}
+	json.NewEncoder(writer).Encode(response)
+
+}
+
 func HandleGetStock(writer http.ResponseWriter, request *http.Request) {
 
 	writer.Header().Set("Content-Type", "application.json")
@@ -222,4 +265,28 @@ func getAllStocks() ([]models.Stock, error) {
 	}
 
 	return stocks, nil
+}
+
+func deleteStock(id int64) (models.Stock, error) {
+	db := createConnection()
+	defer db.Close()
+
+	sqlStatement := `DELETE FROM stock WHERE id=$1 RETURNING *`
+
+	stock := models.Stock{}
+
+	err := db.QueryRow(sqlStatement, id).Scan(
+		&stock.Id,
+		&stock.Name,
+		&stock.Price,
+		&stock.Company,
+	)
+
+	if err != nil {
+		log.Printf("Unable to execute the query. %v", err)
+		return models.Stock{}, nil
+	}
+
+	fmt.Printf("Successfully deleted the stock with id: %v", id)
+	return stock, nil
 }
