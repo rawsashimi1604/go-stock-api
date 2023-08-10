@@ -52,6 +52,12 @@ func HandleIndex(writer http.ResponseWriter, request *http.Request) {
 	json.NewEncoder(writer).Encode(response)
 }
 
+func HandleGetStock(writer http.ResponseWriter, request *http.Request) {
+
+	writer.Header().Set("Content-Type", "application.json")
+
+}
+
 func HandleGetAllStocks(writer http.ResponseWriter, request *http.Request) {
 
 	writer.Header().Set("Content-Type", "application.json")
@@ -114,6 +120,24 @@ func insertStock(stock models.Stock) (int64, error) {
 
 	fmt.Printf("Inserted a single record with id: %v", id)
 	return id, nil
+}
+
+func getStock(id int64) (models.Stock, error) {
+	db := createConnection()
+	defer db.Close()
+
+	sqlStatement := `SELECT * FROM stock WHERE stock.id=$1`
+
+	stock := models.Stock{}
+
+	err := db.QueryRow(sqlStatement, id).Scan(&stock)
+	if err != nil {
+		log.Printf("Unable to execute the query. %v", err)
+		return models.Stock{}, nil
+	}
+
+	fmt.Printf("Successfully got the stockw ith id: %v", id)
+	return stock, nil
 }
 
 func getAllStocks() ([]models.Stock, error) {
