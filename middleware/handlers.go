@@ -52,10 +52,27 @@ func HandleIndex(writer http.ResponseWriter, request *http.Request) {
 	json.NewEncoder(writer).Encode(response)
 }
 
-// func HandleGetAllStocks(writer http.ResponseWriter, request http.Request) {
-// 	stocks := make([]models.Stock, 0)
+func HandleGetAllStocks(writer http.ResponseWriter, request *http.Request) {
 
-// }
+	writer.Header().Set("Content-Type", "application.json")
+
+	stocks, err := getAllStocks()
+	if err != nil {
+		response := response{
+			Message: "Something went wrong on the server.",
+			Code:    http.StatusBadGateway,
+		}
+		json.NewEncoder(writer).Encode(response)
+	}
+
+	// Success flow.
+	response := response{
+		Message: "Successfully got all stocks",
+		Code:    http.StatusOK,
+		Data:    stocks,
+	}
+	json.NewEncoder(writer).Encode(response)
+}
 
 func HandleCreateStock(writer http.ResponseWriter, request *http.Request) {
 	var stock models.Stock
@@ -91,10 +108,49 @@ func insertStock(stock models.Stock) (int64, error) {
 	err := db.QueryRow(sqlStatement, stock.Name, stock.Price, stock.Company).Scan(&id)
 
 	if err != nil {
-		log.Print("Unable to execute the query. %v", err)
+		log.Printf("Unable to execute the query. %v", err)
 		return 0, err
 	}
 
 	fmt.Printf("Inserted a single record with id: %v", id)
 	return id, nil
+}
+
+func getAllStocks() ([]models.Stock, error) {
+	db := createConnection()
+	defer db.Close()
+
+	var stocks = make([]models.Stock, 0)
+
+	sqlStatement := `SELECT * FROM stock`
+
+	// Send the sql statement, return *Rows
+	rows, err := db.Query(sqlStatement)
+	if err != nil {
+		log.Printf("Unable to execute the query, %v", err)
+		return stocks, err
+	}
+
+	defer rows.Close()
+
+	// Iterate over each row
+	for rows.Next() {
+		stockFromDb := models.Stock{}
+
+		err = rows.Scan(
+			&stockFromDb.Id,
+			&stockFromDb.Name,
+			&stockFromDb.Price,
+			&stockFromDb.Company,
+		)
+
+		if err != nil {
+			log.Printf("Unable to scan the row. %v", err)
+			return []models.Stock{}, err
+		}
+
+		stocks = append(stocks, stockFromDb)
+	}
+
+	return stocks, nil
 }
